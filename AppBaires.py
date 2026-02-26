@@ -114,7 +114,7 @@ if menu == "Registrar Cliente":
     st.divider()
     st.subheader("Clientes Registrados")
 
-    clientes = c.execute("SELECT * FROM clientes").fetchall()
+    c.execute("SELECT * FROM clientes").fetchall()
 
     for cliente in clientes:
         col1, col2 = st.columns([5,1])
@@ -131,7 +131,7 @@ if menu == "Registrar Cliente":
 elif menu == "Almacén":
     st.title("📦 Control de Almacén")
 
-    inventario = c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
+    c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
 
     for vino, cantidad in inventario:
         col1, col2, col3 = st.columns([3,1,1])
@@ -156,7 +156,7 @@ elif menu == "Almacén":
 elif menu == "Registrar Venta":
     st.title("🛒 Registrar Venta")
 
-    clientes = c.execute("SELECT id, nombre FROM clientes").fetchall()
+    c.execute("SELECT id, nombre FROM clientes").fetchall()
     cliente_dict = {nombre: id for id, nombre in clientes}
 
     if not cliente_dict:
@@ -166,7 +166,7 @@ elif menu == "Registrar Venta":
         cliente_id = cliente_dict[cliente_nombre]
 
         productos = []
-        inventario = c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
+        c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
 
         st.subheader("Seleccionar Productos")
 
@@ -233,17 +233,17 @@ elif menu == "Historial":
     buscar = st.text_input("Buscar Cliente")
 
     if buscar:
-        clientes = c.execute(
+        c.execute(
             "SELECT id, nombre FROM clientes WHERE nombre LIKE %s",
             (f"%{buscar}%",)
         ).fetchall()
     else:
-        clientes = c.execute("SELECT id, nombre FROM clientes").fetchall()
+        c.execute("SELECT id, nombre FROM clientes").fetchall()
 
     for cliente_id, nombre in clientes:
         with st.expander(nombre):
 
-            ventas = c.execute("""
+            c.execute("""
             SELECT id, productos, fecha, pdf_factura, pdf_consignacion
             FROM ventas
             WHERE cliente_id = %s
@@ -284,6 +284,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
