@@ -18,7 +18,7 @@ if not os.path.exists("pdfs"):
 DATABASE_URL = st.secrets["DATABASE_URL"]
 
 conn = psycopg2.connect(DATABASE_URL)
-cursor = conn.cursor()
+c = conn.cursor()
 
 # CLIENTES
 c.execute("""
@@ -281,4 +281,5 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
