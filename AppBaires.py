@@ -281,3 +281,4 @@ elif menu == "Historial":
 
 
                     st.divider()
+
