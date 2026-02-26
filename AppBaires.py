@@ -23,7 +23,7 @@ c = conn.cursor()
 # CLIENTES
 c.execute("""
 CREATE TABLE IF NOT EXISTS clientes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     nombre TEXT,
     numero TEXT,
     rnc TEXT,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 # VENTAS
 c.execute("""
 CREATE TABLE IF NOT EXISTS ventas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     cliente_id INTEGER,
     productos TEXT,
     fecha TEXT,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS ventas (
 # ALMACÉN
 c.execute("""
 CREATE TABLE IF NOT EXISTS almacen (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     vino TEXT UNIQUE,
     cantidad INTEGER
 )
@@ -71,10 +71,10 @@ vinos = [
 
 # Asegurar que todos los vinos existan en almacén
 for vino in vinos:
-    c.execute("SELECT vino FROM almacen WHERE vino = ?", (vino,))
+    c.execute("SELECT vino FROM almacen WHERE vino = %s", (vino,))
     existe = c.fetchone()
     if not existe:
-        c.execute("INSERT INTO almacen (vino, cantidad) VALUES (?, ?)", (vino, 0))
+        c.execute("INSERT INTO almacen (vino, cantidad) VALUES (%s, %s)", (vino, 0))
 
 conn.commit()
 
@@ -103,7 +103,7 @@ if menu == "Registrar Cliente":
         if nombre.strip() != "":
             c.execute("""
             INSERT INTO clientes (nombre, numero, rnc, representante)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             """, (nombre.strip(), numero.strip(), rnc.strip(), representante.strip()))
             conn.commit()
             st.success("Cliente registrado")
@@ -143,7 +143,7 @@ elif menu == "Almacén":
         )
 
         if st.button(f"Actualizar {vino}", key=f"btn{vino}"):
-            c.execute("UPDATE almacen SET cantidad = cantidad + ? WHERE vino = ?", (agregar, vino))
+            c.execute("UPDATE almacen SET cantidad = cantidad + %s WHERE vino = %s", (agregar, vino))
             conn.commit()
             st.rerun()
 
@@ -205,14 +205,14 @@ elif menu == "Registrar Venta":
 
                 c.execute("""
                 INSERT INTO ventas (cliente_id, productos, fecha, pdf_factura, pdf_consignacion)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """, (cliente_id, productos_json, fecha, factura_path, consignacion_path))
 
                 for item in productos:
                     c.execute("""
                     UPDATE almacen
-                    SET cantidad = cantidad - ?
-                    WHERE vino = ?
+                    SET cantidad = cantidad - %s
+                    WHERE vino = %s
                     """, (item["cantidad"], item["vino"]))
 
                 conn.commit()
@@ -231,7 +231,7 @@ elif menu == "Historial":
 
     if buscar:
         clientes = c.execute(
-            "SELECT id, nombre FROM clientes WHERE nombre LIKE ?",
+            "SELECT id, nombre FROM clientes WHERE nombre LIKE %s",
             (f"%{buscar}%",)
         ).fetchall()
     else:
@@ -243,7 +243,7 @@ elif menu == "Historial":
             ventas = c.execute("""
             SELECT id, productos, fecha, pdf_factura, pdf_consignacion
             FROM ventas
-            WHERE cliente_id = ?
+            WHERE cliente_id = %s
             ORDER BY fecha DESC
             """, (cliente_id,)).fetchall()
 
@@ -281,5 +281,6 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
