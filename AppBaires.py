@@ -44,14 +44,17 @@ CREATE TABLE IF NOT EXISTS ventas (
 )
 """)
 
+
+
 # ALMACÉN
 c.execute("""
-CREATE TABLE IF NOT EXISTS almacen (
+CREATE TABLE almacen (
     id SERIAL PRIMARY KEY,
     vino TEXT UNIQUE,
     cantidad INTEGER
 )
 """)
+conn.commit()
 
 conn.commit()
 
@@ -281,6 +284,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
