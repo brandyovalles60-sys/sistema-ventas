@@ -78,14 +78,15 @@ if menu == "Registrar Cliente":
     st.divider()
     st.subheader("Clientes Registrados")
 
-    c.execute("SELECT * FROM clientes").fetchall()
+    c.execute("SELECT * FROM clientes")
+    clientes = c.fetchall()
 
     for cliente in clientes:
         col1, col2 = st.columns([5,1])
         col1.write(f"{cliente[1]} | Número: {cliente[2]} | RNC: {cliente[3]} | Rep: {cliente[4]}")
         if col2.button("Eliminar", key=f"del{cliente[0]}"):
-            c.execute("DELETE FROM clientes WHERE id=?", (cliente[0],))
-            c.execute("DELETE FROM ventas WHERE cliente_id=?", (cliente[0],))
+            c.execute("DELETE FROM clientes WHERE id=%s", (cliente[0],))
+            c.execute("DELETE FROM ventas WHERE cliente_id=%s", (cliente[0],))
             conn.commit()
             st.rerun()
 
@@ -95,7 +96,8 @@ if menu == "Registrar Cliente":
 elif menu == "Almacén":
     st.title("📦 Control de Almacén")
 
-    c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
+    c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino")
+    inventario = c.fetchall()
 
     for vino, cantidad in inventario:
         col1, col2, col3 = st.columns([3,1,1])
@@ -120,7 +122,8 @@ elif menu == "Almacén":
 elif menu == "Registrar Venta":
     st.title("🛒 Registrar Venta")
 
-    c.execute("SELECT id, nombre FROM clientes").fetchall()
+    c.execute("SELECT id, nombre FROM clientes")
+    cliente = c.fetchall()
     cliente_dict = {nombre: id for id, nombre in clientes}
 
     if not cliente_dict:
@@ -130,7 +133,8 @@ elif menu == "Registrar Venta":
         cliente_id = cliente_dict[cliente_nombre]
 
         productos = []
-        c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
+        c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino")
+        inventario = c.fetchall()
 
         st.subheader("Seleccionar Productos")
 
@@ -200,9 +204,11 @@ elif menu == "Historial":
         c.execute(
             "SELECT id, nombre FROM clientes WHERE nombre LIKE %s",
             (f"%{buscar}%",)
-        ).fetchall()
+        )
+        cliente = c.fetchall()
     else:
-        c.execute("SELECT id, nombre FROM clientes").fetchall()
+        c.execute("SELECT id, nombre FROM clientes")
+        cliente = c.fetchall()
 
     for cliente_id, nombre in clientes:
         with st.expander(nombre):
@@ -212,7 +218,8 @@ elif menu == "Historial":
             FROM ventas
             WHERE cliente_id = %s
             ORDER BY fecha DESC
-            """, (cliente_id,)).fetchall()
+            """, (cliente_id,))
+            ventas = c.fetchall()
 
             if not ventas:
                 st.write("Sin ventas.")
@@ -248,6 +255,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
