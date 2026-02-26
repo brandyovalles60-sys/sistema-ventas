@@ -205,10 +205,10 @@ elif menu == "Historial":
             "SELECT id, nombre FROM clientes WHERE nombre LIKE %s",
             (f"%{buscar}%",)
         )
-        cliente = c.fetchall()
+        clientes = c.fetchall()
     else:
         c.execute("SELECT id, nombre FROM clientes")
-        cliente = c.fetchall()
+        clientes = c.fetchall()
 
     for cliente_id, nombre in clientes:
         with st.expander(nombre):
@@ -255,6 +255,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
