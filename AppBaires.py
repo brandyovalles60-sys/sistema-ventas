@@ -123,7 +123,7 @@ elif menu == "Registrar Venta":
     st.title("🛒 Registrar Venta")
 
     c.execute("SELECT id, nombre FROM clientes")
-    cliente = c.fetchall()
+    clientes = c.fetchall()
     cliente_dict = {nombre: id for id, nombre in clientes}
 
     if not cliente_dict:
@@ -255,6 +255,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
