@@ -20,43 +20,7 @@ DATABASE_URL = st.secrets["DATABASE_URL"]
 conn = psycopg2.connect(DATABASE_URL)
 c = conn.cursor()
 
-# CLIENTES
-c.execute("""
-CREATE TABLE IF NOT EXISTS clientes (
-    id SERIAL PRIMARY KEY,
-    nombre TEXT,
-    numero TEXT,
-    rnc TEXT,
-    representante TEXT
-)
-""")
 
-# VENTAS
-c.execute("""
-CREATE TABLE IF NOT EXISTS ventas (
-    id SERIAL PRIMARY KEY,
-    cliente_id INTEGER,
-    productos TEXT,
-    fecha TEXT,
-    pdf_factura TEXT,
-    pdf_consignacion TEXT,
-    FOREIGN KEY(cliente_id) REFERENCES clientes(id)
-)
-""")
-
-
-
-# ALMACÉN
-c.execute("""
-CREATE TABLE almacen (
-    id SERIAL PRIMARY KEY,
-    vino TEXT UNIQUE,
-    cantidad INTEGER
-)
-""")
-conn.commit()
-
-conn.commit()
 
 # ==============================
 # LISTA FIJA DE VINOS
@@ -284,6 +248,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
