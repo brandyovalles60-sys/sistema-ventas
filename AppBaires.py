@@ -1,0 +1,280 @@
+import streamlit as st
+import sqlite3
+import os
+import json
+from datetime import datetime
+
+st.set_page_config(page_title="Sistema de Ventas", layout="wide")
+
+# ==============================
+# CREAR CARPETA PDF
+# ==============================
+if not os.path.exists("pdfs"):
+    os.makedirs("pdfs")
+
+# ==============================
+# BASE DE DATOS
+# ==============================
+conn = sqlite3.connect("ventas.db", check_same_thread=False)
+c = conn.cursor()
+
+# CLIENTES
+c.execute("""
+CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT,
+    numero TEXT,
+    rnc TEXT,
+    representante TEXT
+)
+""")
+
+# VENTAS
+c.execute("""
+CREATE TABLE IF NOT EXISTS ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    productos TEXT,
+    fecha TEXT,
+    pdf_factura TEXT,
+    pdf_consignacion TEXT,
+    FOREIGN KEY(cliente_id) REFERENCES clientes(id)
+)
+""")
+
+# ALMACÉN
+c.execute("""
+CREATE TABLE IF NOT EXISTS almacen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vino TEXT UNIQUE,
+    cantidad INTEGER
+)
+""")
+
+conn.commit()
+
+# ==============================
+# LISTA FIJA DE VINOS
+# ==============================
+vinos = [
+    "Royal Cabernet",
+    "Descarriados",
+    "Royal Malbec",
+    "Aureo Chardonnay",
+    "Aureo ruta 90",
+    "Petit verdot",
+    "Callejon comunero",
+    "Espumoso FincaBV"
+]
+
+# Asegurar que todos los vinos existan en almacén
+for vino in vinos:
+    c.execute("SELECT vino FROM almacen WHERE vino = ?", (vino,))
+    existe = c.fetchone()
+    if not existe:
+        c.execute("INSERT INTO almacen (vino, cantidad) VALUES (?, ?)", (vino, 0))
+
+conn.commit()
+
+# ==============================
+# MENÚ
+# ==============================
+menu = st.sidebar.selectbox("Menú", [
+    "Registrar Cliente",
+    "Almacén",
+    "Registrar Venta",
+    "Historial"
+])
+
+# ==============================
+# REGISTRAR CLIENTE
+# ==============================
+if menu == "Registrar Cliente":
+    st.title("👤 Registrar Cliente")
+
+    nombre = st.text_input("Nombre del Cliente")
+    numero = st.text_input("Número")
+    rnc = st.text_input("RNC")
+    representante = st.text_input("Representante")
+
+    if st.button("Guardar Cliente"):
+        if nombre.strip() != "":
+            c.execute("""
+            INSERT INTO clientes (nombre, numero, rnc, representante)
+            VALUES (?, ?, ?, ?)
+            """, (nombre.strip(), numero.strip(), rnc.strip(), representante.strip()))
+            conn.commit()
+            st.success("Cliente registrado")
+
+    st.divider()
+    st.subheader("Clientes Registrados")
+
+    clientes = c.execute("SELECT * FROM clientes").fetchall()
+
+    for cliente in clientes:
+        col1, col2 = st.columns([5,1])
+        col1.write(f"{cliente[1]} | Número: {cliente[2]} | RNC: {cliente[3]} | Rep: {cliente[4]}")
+        if col2.button("Eliminar", key=f"del{cliente[0]}"):
+            c.execute("DELETE FROM clientes WHERE id=?", (cliente[0],))
+            c.execute("DELETE FROM ventas WHERE cliente_id=?", (cliente[0],))
+            conn.commit()
+            st.rerun()
+
+# ==============================
+# ALMACÉN
+# ==============================
+elif menu == "Almacén":
+    st.title("📦 Control de Almacén")
+
+    inventario = c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
+
+    for vino, cantidad in inventario:
+        col1, col2, col3 = st.columns([3,1,1])
+        col1.write(f"**{vino}**")
+        col2.write(f"Stock: {cantidad}")
+
+        agregar = col3.number_input(
+            f"Agregar {vino}",
+            min_value=0,
+            step=1,
+            key=f"add{vino}"
+        )
+
+        if st.button(f"Actualizar {vino}", key=f"btn{vino}"):
+            c.execute("UPDATE almacen SET cantidad = cantidad + ? WHERE vino = ?", (agregar, vino))
+            conn.commit()
+            st.rerun()
+
+# ==============================
+# REGISTRAR VENTA
+# ==============================
+elif menu == "Registrar Venta":
+    st.title("🛒 Registrar Venta")
+
+    clientes = c.execute("SELECT id, nombre FROM clientes").fetchall()
+    cliente_dict = {nombre: id for id, nombre in clientes}
+
+    if not cliente_dict:
+        st.warning("Primero registra un cliente.")
+    else:
+        cliente_nombre = st.selectbox("Seleccionar Cliente", list(cliente_dict.keys()))
+        cliente_id = cliente_dict[cliente_nombre]
+
+        productos = []
+        inventario = c.execute("SELECT vino, cantidad FROM almacen ORDER BY vino").fetchall()
+
+        st.subheader("Seleccionar Productos")
+
+        for vino, stock in inventario:
+            cantidad = st.number_input(
+                f"{vino} (Disponible: {stock})",
+                min_value=0,
+                max_value=stock,
+                step=1,
+                key=f"venta{vino}"
+            )
+
+            if cantidad > 0:
+                productos.append({
+                    "vino": vino,
+                    "cantidad": cantidad
+                })
+
+        factura = st.file_uploader("Subir PDF Factura", type=["pdf"])
+        consignacion = st.file_uploader("Subir PDF Consignación", type=["pdf"])
+
+        if st.button("Guardar Venta"):
+            if productos:
+                fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                productos_json = json.dumps(productos)
+
+                factura_path = ""
+                consignacion_path = ""
+
+                if factura:
+                    factura_path = f"pdfs/factura_{datetime.now().timestamp()}.pdf"
+                    with open(factura_path, "wb") as f:
+                        f.write(factura.read())
+
+                if consignacion:
+                    consignacion_path = f"pdfs/consignacion_{datetime.now().timestamp()}.pdf"
+                    with open(consignacion_path, "wb") as f:
+                        f.write(consignacion.read())
+
+                c.execute("""
+                INSERT INTO ventas (cliente_id, productos, fecha, pdf_factura, pdf_consignacion)
+                VALUES (?, ?, ?, ?, ?)
+                """, (cliente_id, productos_json, fecha, factura_path, consignacion_path))
+
+                for item in productos:
+                    c.execute("""
+                    UPDATE almacen
+                    SET cantidad = cantidad - ?
+                    WHERE vino = ?
+                    """, (item["cantidad"], item["vino"]))
+
+                conn.commit()
+                st.success("Venta registrada correctamente")
+                st.rerun()
+            else:
+                st.warning("Selecciona al menos un producto.")
+
+# ==============================
+# HISTORIAL
+# ==============================
+elif menu == "Historial":
+    st.title("📚 Historial por Cliente")
+
+    buscar = st.text_input("Buscar Cliente")
+
+    if buscar:
+        clientes = c.execute(
+            "SELECT id, nombre FROM clientes WHERE nombre LIKE ?",
+            (f"%{buscar}%",)
+        ).fetchall()
+    else:
+        clientes = c.execute("SELECT id, nombre FROM clientes").fetchall()
+
+    for cliente_id, nombre in clientes:
+        with st.expander(nombre):
+
+            ventas = c.execute("""
+            SELECT id, productos, fecha, pdf_factura, pdf_consignacion
+            FROM ventas
+            WHERE cliente_id = ?
+            ORDER BY fecha DESC
+            """, (cliente_id,)).fetchall()
+
+            if not ventas:
+                st.write("Sin ventas.")
+            else:
+                for venta in ventas:
+                    st.write(f"Fecha: {venta[2]}")
+
+                    try:
+                        productos = json.loads(venta[1]) if venta[1] else []
+                    except:
+                        productos = []
+
+                    for item in productos:
+                        st.write(f"- {item['vino']} | Cantidad: {item['cantidad']}")
+
+                    if venta[3] and os.path.exists(venta[3]):
+                        with open(venta[3], "rb") as f:
+                            st.download_button(
+                                "Descargar Factura",
+                                f,
+                                file_name="factura.pdf",
+                                key=f"f{venta[0]}"
+                            )
+
+                    if venta[4] and os.path.exists(venta[4]):
+                        with open(venta[4], "rb") as f:
+                            st.download_button(
+                                "Descargar Consignación",
+                                f,
+                                file_name="consignacion.pdf",
+                                key=f"c{venta[0]}"
+                            )
+
+                    st.divider()
