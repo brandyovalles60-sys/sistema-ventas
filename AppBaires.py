@@ -1,7 +1,7 @@
 import streamlit as st
-import sqlite3
 import os
 import json
+import psycopg2
 from datetime import datetime
 
 st.set_page_config(page_title="Sistema de Ventas", layout="wide")
@@ -15,8 +15,10 @@ if not os.path.exists("pdfs"):
 # ==============================
 # BASE DE DATOS
 # ==============================
-conn = sqlite3.connect("ventas.db", check_same_thread=False)
-c = conn.cursor()
+DATABASE_URL = st.secrets["DATABASE_URL"]
+
+conn = psycopg2.connect(DATABASE_URL)
+cursor = conn.cursor()
 
 # CLIENTES
 c.execute("""
@@ -276,5 +278,6 @@ elif menu == "Historial":
                                 file_name="consignacion.pdf",
                                 key=f"c{venta[0]}"
                             )
+
 
                     st.divider()
