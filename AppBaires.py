@@ -2,7 +2,32 @@ import streamlit as st
 import os
 import json
 import psycopg2
+import pdfplumber
+import re
 from datetime import datetime
+
+
+def extraer_total(pdf_path):
+    total_encontrado = 0
+
+    with pdfplumber.open(pdf_path) as pdf:
+        texto_completo = ""
+
+        for pagina in pdf.pages:
+            texto = pagina.extract_text()
+            if texto:
+                texto_completo += texto + "\n"
+
+    # Buscar palabra TOTAL seguida de número
+    patron = r"TOTAL\s*\$?\s*([\d,]+\.\d{2})"
+    coincidencia = re.search(patron, texto_completo, re.IGNORECASE)
+
+    if coincidencia:
+        total = coincidencia.group(1)
+        total = total.replace(",", "")
+        total_encontrado = float(total)
+
+    return total_encontrado
 
 st.set_page_config(page_title="Sistema de Ventas", layout="wide")
 
@@ -174,6 +199,14 @@ elif menu == "Registrar Venta":
                     with open(consignacion_path, "wb") as f:
                         f.write(consignacion.read())
 
+                monto_venta = 0
+                if factura_path:
+                    monto_venta = extraer_total(factura_path)
+                else:
+                    st.warning("No se detectó factura. Monto no agregado automáticamente.")
+
+                st.write("Monto detectado:", monto_venta)
+
                 c.execute("""
                 INSERT INTO ventas (cliente_id, productos, fecha, pdf_factura, pdf_consignacion)
                 VALUES (%s, %s, %s, %s, %s)
@@ -181,10 +214,11 @@ elif menu == "Registrar Venta":
                 
                 
                 c.execute("""
-                UPDATE cuentas_por_cobrar
-                SET monto_total = monto_total + %s
-                WHERE cliente_id = %s
-                """, (monto_venta, cliente_id))
+                INSERT INTO cuentas_por_cobrar (cliente_id, monto_total)
+                VALUES (%s, %s)
+                ON CONFLICT (cliente_id)
+                DO UPDATE SET monto_total = cuentas_por_cobrar.monto_total + EXCLUDED.monto_total
+                """, (cliente_id, monto_venta))
 
                 for item in productos:
                     c.execute("""
@@ -262,6 +296,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
