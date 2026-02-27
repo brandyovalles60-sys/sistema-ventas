@@ -178,6 +178,13 @@ elif menu == "Registrar Venta":
                 INSERT INTO ventas (cliente_id, productos, fecha, pdf_factura, pdf_consignacion)
                 VALUES (%s, %s, %s, %s, %s)
                 """, (cliente_id, productos_json, fecha, factura_path, consignacion_path))
+                
+                
+                c.execute("""
+                UPDATE cuentas_por_cobrar
+                SET monto_total = monto_total + %s
+                WHERE cliente_id = %s
+                """, (monto_venta, cliente_id))
 
                 for item in productos:
                     c.execute("""
@@ -255,6 +262,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
