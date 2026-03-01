@@ -42,8 +42,16 @@ if not os.path.exists("pdfs"):
 # ==============================
 DATABASE_URL = st.secrets["DATABASE_URL"]
 
-conn = psycopg2.connect(DATABASE_URL)
-c = conn.cursor()
+try:
+    conn = psycopg2.connect(
+        DATABASE_URL,
+        sslmode="require",
+        connect_timeout=10
+    )
+    c = conn.cursor()
+except psycopg2.OperationalError as e:
+    st.error("No se pudo conectar a la base de datos.")
+    st.stop()
 
 
 
@@ -296,6 +304,7 @@ elif menu == "Historial":
 
 
                     st.divider()
+
 
 
 
